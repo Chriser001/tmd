@@ -2,6 +2,8 @@ package twitter
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -48,16 +50,26 @@ func parseTweetResults(tweet_results *gjson.Result) *Tweet {
 }
 
 func getUrlsFromMedia(media *gjson.Result) []string {
-	results := []string{}
-	for _, m := range media.Array() {
-		typ := m.Get("type").String()
-		if typ == "video" || typ == "animated_gif" {
-			results = append(results, m.Get("video_info.variants.@reverse.0.url").String())
-		} else if typ == "photo" {
-			results = append(results, m.Get("media_url_https").String())
-		}
-	}
-	return results
+    results := []string{}
+    for _, m := range media.Array() {
+        typ := m.Get("type").String()
+        if typ == "video" || typ == "animated_gif" {
+            results = append(results, m.Get("video_info.variants.@reverse.0.url").String())
+        } else if typ == "photo" {
+            url := m.Get("media_url_https").String()
+            if strings.HasSuffix(url, ".jpg") || 
+               strings.HasSuffix(url, ".png") || 
+               strings.HasSuffix(url, ".jpeg") {
+                if strings.Contains(url, "?name=") {
+                    url = regexp.MustCompile(`\?name=[^&]*`).ReplaceAllString(url, "?name=orig")
+                } else {
+                    url += "?name=orig"
+                }
+            }
+            results = append(results, url)
+        }
+    }
+    return results
 }
 
 // ended audio space
